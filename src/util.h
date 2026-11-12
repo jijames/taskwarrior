@@ -34,7 +34,9 @@
 
 #include <string>
 #include <vector>
-#if defined(FREEBSD) || defined(OPENBSD)
+#if defined(_WIN32)
+// UUIDs are generated with UuidCreate (see util.cpp); no libuuid on Windows.
+#elif defined(FREEBSD) || defined(OPENBSD)
 #include <uuid.h>
 #else
 #include <uuid/uuid.h>
@@ -44,7 +46,7 @@
 // util.cpp
 int confirm4(const std::string&);
 
-#ifndef HAVE_UUID_UNPARSE_LOWER
+#if !defined(_WIN32) && !defined(HAVE_UUID_UNPARSE_LOWER)
 void uuid_unparse_lower(uuid_t uu, char* out);
 #endif
 const std::string uuid();

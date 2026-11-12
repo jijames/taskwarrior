@@ -42,7 +42,16 @@
 #include <shared.h>
 #include <stdlib.h>
 #include <taskchampion-cpp/lib.h>
+#ifdef _WIN32
+#include <io.h>
+#include <windows.h>
+#ifndef STDOUT_FILENO
+#define STDOUT_FILENO 1
+#endif
+#define isatty _isatty
+#else
 #include <unistd.h>
+#endif
 
 #include <algorithm>
 #include <iomanip>
@@ -54,7 +63,9 @@
 #include <commit.h>
 #endif
 
+#ifndef _WIN32
 #include <sys/ioctl.h>
+#endif
 
 #ifdef SOLARIS
 #include <sys/termios.h>
@@ -64,6 +75,24 @@
 #include <FindDirectory.h>
 #include <StorageDefs.h>
 #endif
+
+// Query the terminal size; leaves the arguments untouched when it cannot be determined.
+static void queryTerminalSize(int& height, int& width) {
+#ifdef _WIN32
+  CONSOLE_SCREEN_BUFFER_INFO csbi;
+  HANDLE h = GetStdHandle(STD_OUTPUT_HANDLE);
+  if (h != INVALID_HANDLE_VALUE && GetConsoleScreenBufferInfo(h, &csbi)) {
+    width = csbi.srWindow.Right - csbi.srWindow.Left + 1;
+    height = csbi.srWindow.Bottom - csbi.srWindow.Top + 1;
+  }
+#else
+  unsigned short buff[4];
+  if (ioctl(STDOUT_FILENO, TIOCGWINSZ, &buff) != -1) {
+    height = buff[0];
+    width = buff[1];
+  }
+#endif
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 // This string is parsed and used as default values for configuration.
@@ -513,6 +542,14 @@ int Context::initialize(int argc, const char** argv) {
     // Artificial scope for timing purposes.
     {
       Timer timer;
+#ifdef _WIN32
+      // The built-in defaults include default.theme. Nothing is installed under TASK_RCDIR on Windows,
+      // so also search the directory of the rc file (theme files live next to taskrc).
+      {
+        std::string rc_dir = rc_file.parent();
+        if (!rc_dir.empty()) searchPaths.push_back(rc_dir);
+      }
+#endif
       config.parse(configurationDefaults, 1, searchPaths);
 #ifdef HAIKU
       if (!haiku_task_dir.empty()) config.set("data.location", haiku_task_dir + "/data");
@@ -858,11 +895,7 @@ int Context::getWidth() {
 
   if (config.getBoolean("detection")) {
     if (terminal_width == 0 && terminal_height == 0) {
-      unsigned short buff[4];
-      if (ioctl(STDOUT_FILENO, TIOCGWINSZ, &buff) != -1) {
-        terminal_height = buff[0];
-        terminal_width = buff[1];
-      }
+      queryTerminalSize(terminal_height, terminal_width);
     }
 
     width = terminal_width;
@@ -886,11 +919,7 @@ int Context::getHeight() {
 
   if (config.getBoolean("detection")) {
     if (terminal_width == 0 && terminal_height == 0) {
-      unsigned short buff[4];
-      if (ioctl(STDOUT_FILENO, TIOCGWINSZ, &buff) != -1) {
-        terminal_height = buff[0];
-        terminal_width = buff[1];
-      }
+      queryTerminalSize(terminal_height, terminal_width);
     }
 
     height = terminal_height;

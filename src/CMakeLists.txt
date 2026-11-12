@@ -47,7 +47,12 @@ add_library (libshared STATIC libshared/src/Color.cpp
                        libshared/src/unicode.cpp
                        libshared/src/utf8.cpp)
 
-add_executable (task_executable main.cpp)
+if (MSVC)
+  # UTF-8 active code page + long paths (Windows port)
+  add_executable (task_executable main.cpp task.manifest)
+else (MSVC)
+  add_executable (task_executable main.cpp)
+endif (MSVC)
 add_executable (calc_executable calc.cpp)
 add_executable (lex_executable lex.cpp)
 

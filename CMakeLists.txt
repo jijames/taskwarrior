@@ -67,6 +67,10 @@ SET (TASK_BINDIR  bin            CACHE STRING "Installation directory for the bi
 # rust libs require these
 if (HAIKU)
   set (TASK_LIBRARIES network be bsd gnu)
+elseif (WIN32)
+  # Windows: no libdl/libpthread. System libs needed by the Rust staticlib are added by Corrosion;
+  # rpcrt4 provides UuidCreate (see util.cpp).
+  set (TASK_LIBRARIES rpcrt4)
 else (HAIKU)
   set (TASK_LIBRARIES dl pthread)
 endif (HAIKU)
@@ -78,7 +82,10 @@ check_struct_has_member ("struct tm" tm_gmtoff time.h HAVE_TM_GMTOFF)
 check_struct_has_member ("struct stat" st_birthtime "sys/types.h;sys/stat.h" HAVE_ST_BIRTHTIME)
 
 message ("-- Looking for libuuid")
-if (DARWIN OR FREEBSD OR OPENBSD)
+if (WIN32)
+  # Windows has no libuuid; util.cpp generates UUIDs with UuidCreate (rpcrt4, linked above).
+  set (HAVE_UUID_UNPARSE_LOWER ON)
+elseif (DARWIN OR FREEBSD OR OPENBSD)
   # Apple and FreeBSD include the uuid functions in their libc, rather than libuuid
   check_function_exists (uuid_unparse_lower HAVE_UUID_UNPARSE_LOWER)
 else (DARWIN OR FREEBSD OR OPENBSD)
@@ -94,7 +101,7 @@ else (DARWIN OR FREEBSD OR OPENBSD)
   else (UUID_INCLUDE_DIR AND UUID_LIBRARY)
     message (FATAL_ERROR "-- libuuid not found.")
   endif (UUID_INCLUDE_DIR AND UUID_LIBRARY)
-endif (DARWIN OR FREEBSD OR OPENBSD)
+endif ()
 
 if (HAVE_UUID_UNPARSE_LOWER)
   message ("-- Found libuuid")
@@ -147,8 +154,11 @@ add_subdirectory (src)
 add_subdirectory (src/commands)
 add_subdirectory (src/taskchampion-cpp)
 add_subdirectory (src/columns)
-add_subdirectory (doc)
-add_subdirectory (scripts)
+if (NOT WIN32)
+  # man pages and shell completions: not installed on Windows
+  add_subdirectory (doc)
+  add_subdirectory (scripts)
+endif (NOT WIN32)
 if (EXISTS ${CMAKE_SOURCE_DIR}/test)
   add_subdirectory (test EXCLUDE_FROM_ALL)
 endif (EXISTS ${CMAKE_SOURCE_DIR}/test)

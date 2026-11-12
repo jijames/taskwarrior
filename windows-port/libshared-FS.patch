@@ -1,0 +1,52 @@
+diff --git a/src/libshared/src/FS.cpp b/src/libshared/src/FS.cpp
+index 29258d2..2dec0f4 100644
+--- a/src/libshared/src/FS.cpp
++++ b/src/libshared/src/FS.cpp
+@@ -33,6 +33,7 @@
+ #include <cerrno>
+ #include <cstdio>
+ #include <cstdlib>
++#include <cctype>
+ #include <cstring>
+ #ifndef _WIN32
+ #include <dirent.h>
+@@ -99,6 +100,12 @@ Path::Path (const std::string& in)
+ {
+   _original = in;
+   _data     = expand (in);
++#ifdef _WIN32
++  // Windows accepts / everywhere; the rest of this library splits paths on / only.
++  for (auto& c : _data)
++    if (c == '\\')
++      c = '/';
++#endif
+ }
+ 
+ ////////////////////////////////////////////////////////////////////////////////
+@@ -197,7 +204,11 @@ std::string Path::realpath () const
+   if (GetFullPathNameA(_data.c_str(), required_size, full_path.data(), nullptr) == 0)
+     return "";
+ 
+-  return std::string(full_path.data());
++  std::string result(full_path.data());
++  for (auto& c : result)
++    if (c == '\\')
++      c = '/';
++  return result;
+ #endif
+ }
+ 
+@@ -232,6 +243,13 @@ bool Path::is_absolute () const
+   if (!_data.empty () && _data[0] == '/')
+     return true;
+ 
++#ifdef _WIN32
++  // Drive-letter paths: C:/ or C:\\ (a bare C: is drive-relative, so not absolute).
++  if (_data.size () >= 3 && std::isalpha (static_cast<unsigned char> (_data[0])) && _data[1] == ':' &&
++      (_data[2] == '/' || _data[2] == '\\'))
++    return true;
++#endif
++
+   return false;
+ }
+ 

@@ -37,7 +37,12 @@
 #include <Pig.h>
 #include <format.h>
 #include <shared.h>
+#ifdef _WIN32
+#include <direct.h>
+#define chdir _chdir
+#else
 #include <unistd.h>
+#endif
 #include <util.h>
 
 #include <algorithm>
@@ -637,7 +642,11 @@ CmdEdit::editResult CmdEdit::editFile(Task& task) {
   if (editor == "" && peditor) editor = std::string(peditor);
   peditor = getenv("EDITOR");
   if (editor == "" && peditor) editor = std::string(peditor);
+  #ifdef _WIN32
+  if (editor == "") editor = "notepad";
+#else
   if (editor == "") editor = "vi";
+#endif
 
   // Complete the command line.
   editor += ' ';

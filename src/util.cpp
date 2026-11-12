@@ -36,15 +36,22 @@
 #endif
 #include <Context.h>
 #include <Lexer.h>
-#include <pwd.h>
 #include <signal.h>
 #include <stdlib.h>
+#include <sys/types.h>
+#ifdef _WIN32
+#include <windows.h>
+#include <rpc.h>  // UuidCreate (rpcrt4)
+#else
+#include <pwd.h>
 #include <sys/select.h>
 #include <sys/time.h>
-#include <sys/types.h>
 #include <sys/wait.h>
+#endif
 #include <unicode.h>
+#ifndef _WIN32
 #include <unistd.h>
+#endif
 #include <utf8.h>
 #include <util.h>
 
@@ -118,7 +125,17 @@ int confirm4(const std::string& question) {
 // representation is always lowercase anyway.
 // For the implementation details, refer to
 // https://svnweb.freebsd.org/base/head/sys/kern/kern_uuid.c
-#if defined(FREEBSD) || defined(OPENBSD)
+#if defined(_WIN32)
+const std::string uuid() {
+  UUID id;
+  UuidCreate(&id);
+  RPC_CSTR str = nullptr;
+  if (UuidToStringA(&id, &str) != RPC_S_OK) throw std::string("Could not generate a UUID.");
+  std::string res(reinterpret_cast<char*>(str));  // lowercase, 36 chars
+  RpcStringFreeA(&str);
+  return res;
+}
+#elif defined(FREEBSD) || defined(OPENBSD)
 const std::string uuid() {
   uuid_t id;
   uint32_t status;

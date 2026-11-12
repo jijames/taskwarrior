@@ -33,13 +33,15 @@
 #include <Lexer.h>
 #include <feedback.h>
 #include <format.h>
-#include <pwd.h>
 #include <recur.h>
 #include <stdlib.h>
 #include <sys/types.h>
 #include <time.h>
 #include <unicode.h>
+#ifndef _WIN32
+#include <pwd.h>
 #include <unistd.h>
+#endif
 #include <util.h>
 
 #include <limits>

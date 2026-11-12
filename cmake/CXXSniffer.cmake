@@ -3,7 +3,12 @@ message ("-- System: ${CMAKE_SYSTEM_NAME}")
 
 include (CheckCXXCompilerFlag)
 
-CHECK_CXX_COMPILER_FLAG("-std=c++17"   _HAS_CXX17)
+if (MSVC)
+  # cl / clang-cl accept /std:c++17; CMAKE_CXX_STANDARD below selects it.
+  set (_HAS_CXX17 TRUE)
+else (MSVC)
+  CHECK_CXX_COMPILER_FLAG("-std=c++17"   _HAS_CXX17)
+endif (MSVC)
 
 if (_HAS_CXX17)
   set (CMAKE_CXX_STANDARD 17)
@@ -31,6 +36,8 @@ elseif (${CMAKE_SYSTEM_NAME} MATCHES "SunOS")
   set (SOLARIS true)
 elseif (${CMAKE_SYSTEM_NAME} STREQUAL "GNU")
   set (GNUHURD true)
+elseif (${CMAKE_SYSTEM_NAME} STREQUAL "Windows")
+  set (WINDOWS true)
 elseif (${CMAKE_SYSTEM_NAME} STREQUAL "CYGWIN")
   set (CYGWIN true)
   set (CMAKE_CXX_EXTENSIONS ON)
@@ -39,4 +46,9 @@ else (${CMAKE_SYSTEM_NAME} MATCHES "Linux")
 endif (${CMAKE_SYSTEM_NAME} MATCHES "Linux")
 
 set (CMAKE_CXX_FLAGS "${_CXX14_FLAGS} ${CMAKE_CXX_FLAGS}")
-set (CMAKE_CXX_FLAGS "-Wall -Wextra -Wsign-compare -Wreturn-type ${CMAKE_CXX_FLAGS}")
+if (MSVC)
+  # /utf-8: sources are UTF-8. NOMINMAX/WIN32_LEAN_AND_MEAN: keep windows.h from clobbering std::min/max etc.
+  set (CMAKE_CXX_FLAGS "/utf-8 /permissive- /EHsc /W3 /D_CRT_SECURE_NO_WARNINGS /D_CRT_NONSTDC_NO_WARNINGS /DNOMINMAX /DWIN32_LEAN_AND_MEAN /Zc:__cplusplus ${CMAKE_CXX_FLAGS}")
+else (MSVC)
+  set (CMAKE_CXX_FLAGS "-Wall -Wextra -Wsign-compare -Wreturn-type ${CMAKE_CXX_FLAGS}")
+endif (MSVC)

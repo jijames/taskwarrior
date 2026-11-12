@@ -30,6 +30,10 @@
 #include <Context.h>
 #include <rust/cxx.h>
 #include <signal.h>
+#include <stdlib.h>
+#ifdef _WIN32
+#include <windows.h>
+#endif
 
 #include <cstring>
 #include <iostream>
@@ -42,7 +46,20 @@ int main(int argc, const char** argv) {
 
   // Ignore SIGPIPE from writes to network sockets after the remote end has hung
   // up. Rust code expects this, and the Rust runtime ignores this signal at startup.
+#ifndef _WIN32
   signal(SIGPIPE, SIG_IGN);
+#else
+  // Windows has no SIGPIPE and no $HOME: libshared and Context expand ~ and build ~/.taskrc from HOME.
+  if (!getenv("HOME") && getenv("USERPROFILE")) _putenv_s("HOME", getenv("USERPROFILE"));
+  // UTF-8 output and ANSI colour sequences in the console (Windows Terminal already has both).
+  SetConsoleOutputCP(CP_UTF8);
+  {
+    HANDLE out = GetStdHandle(STD_OUTPUT_HANDLE);
+    DWORD mode = 0;
+    if (out != INVALID_HANDLE_VALUE && GetConsoleMode(out, &mode))
+      SetConsoleMode(out, mode | ENABLE_VIRTUAL_TERMINAL_PROCESSING);
+  }
+#endif
 
   Context globalContext;
   Context::setContext(&globalContext);

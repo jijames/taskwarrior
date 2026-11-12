@@ -45,8 +45,10 @@
 #include <format.h>
 #include <shared.h>
 #include <sys/types.h>
+#ifndef _WIN32
 #include <sys/wait.h>
 #include <unistd.h>
+#endif
 #include <util.h>
 
 #define STRING_HOOK_ERROR_OBJECT "Hook Error: JSON Object '{...}' expected from hook script: {1}"
@@ -326,7 +328,7 @@ std::vector<std::string> Hooks::list() const { return _scripts; }
 std::vector<std::string> Hooks::scripts(const std::string& event) const {
   std::vector<std::string> matching;
   for (const auto& i : _scripts) {
-    if (i.find("/" + event) != std::string::npos) {
+    if (i.find("/" + event) != std::string::npos || i.find("\\" + event) != std::string::npos) {
       File script(i);
       if (script.executable()) matching.push_back(i);
     }

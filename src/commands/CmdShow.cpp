@@ -262,7 +262,15 @@ int CmdShow::execute(std::string& output) {
   // Find all the values that match the defaults, for highlighting.
   std::vector<std::string> default_values;
   Configuration default_config;
-  default_config.parse(configurationDefaults, 0, {TASK_RCDIR});
+  std::vector<std::string> defaultSearchPaths{TASK_RCDIR};
+#ifdef _WIN32
+  // The built-in defaults include default.theme; on Windows it is found next to the rc file (see Context.cpp).
+  {
+    std::string rc_dir = Context::getContext().rc_file.parent();
+    if (!rc_dir.empty()) defaultSearchPaths.push_back(rc_dir);
+  }
+#endif
+  default_config.parse(configurationDefaults, 0, defaultSearchPaths);
 
   for (auto& i : Context::getContext().config)
     if (i.second != default_config.get(i.first)) default_values.push_back(i.first);
